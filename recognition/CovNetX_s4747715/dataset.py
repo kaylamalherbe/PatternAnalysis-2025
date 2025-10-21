@@ -6,9 +6,6 @@ import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 from torch.utils.data import DataLoader
 
-data_location = r"C:\Users\kayla\Documents\Uni\2025 Sem 2\COMP3710\Final Project\ADNI data set for Alzheimer's disease-20251015T011003Z-1-001\AD_NC\train"
-validation_location = r"C:\Users\kayla\Documents\Uni\2025 Sem 2\COMP3710\Final Project\ADNI data set for Alzheimer's disease-20251015T011003Z-1-001\AD_NC\test"
-
 # Load data set
 def data_loader(dir, batch_size=64, split=0.3, seed=3710):
     # augement data
@@ -20,7 +17,7 @@ def data_loader(dir, batch_size=64, split=0.3, seed=3710):
     ])
 
 
-    dataset = datasets.ImageFolder(os.path.join(dir, split), transform=transform)
+    dataset = datasets.ImageFolder(dir, transform=transform)
 
     train_size = int(len(dataset) * (1 - split))
     val_size = len(dataset) - train_size
@@ -41,7 +38,7 @@ def test_loader(dir, batch_size):
         transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
     ])
 
-    dataset = datasets.ImageFolder(os.path.join(dir, 'val'), transform=transform)
+    dataset = datasets.ImageFolder(dir, transform=transform)
 
     val_dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
 
