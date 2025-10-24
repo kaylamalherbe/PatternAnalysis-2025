@@ -10,44 +10,6 @@ import numpy as np
 
 IMAGE_DIM = 224
 
-# Load data set
-def data_loader(dir, batch_size=64, split=0.3, seed=3710):
-    # augement data
-
-    transform = transforms.Compose([
-        transforms.Resize((224, 224)),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-    ])
-
-
-    dataset = datasets.ImageFolder(dir, transform=transform)
-
-    train_size = int(len(dataset) * (1 - split))
-    val_size = len(dataset) - train_size
-    generator = torch.Generator().manual_seed(seed)
-    
-    train_set, val_set = random_split(dataset, [train_size, val_size], generator=generator)
-
-    train_dataloader = DataLoader(train_set, batch_size=batch_size, shuffle=True) 
-    val_dataloader = DataLoader(val_set, batch_size=batch_size, shuffle=True)    
-
-    return train_dataloader, val_dataloader
-
-
-def test_loader(dir, batch_size):
-    transform = transforms.Compose([
-        transforms.Resize((224, 224)),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-    ])
-
-    dataset = datasets.ImageFolder(dir, transform=transform)
-
-    val_dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
-
-    return val_dataloader
-
 
 def calc_normalization_values(dir):
   # define custom transform function
@@ -56,9 +18,6 @@ def calc_normalization_values(dir):
       transforms.ToTensor()
   ])
   img_tr = datasets.ImageFolder(dir, transform=transform)[0][0]
-  # transform the pIL image to tensor
-  # image
-  # img_tr = transform(img)
 
   # Convert tensor image to numpy array
   img_np = np.array(img_tr)
@@ -98,8 +57,8 @@ def data_loader_aug(dir, batch_size=64, split=0.3, seed=3710, mean=[0.1164], std
 
     dataset = datasets.ImageFolder(dir, transform=transform)
     #random choose half the dataset
-    # dataset, _ = random_split(dataset, [len(dataset)//4, 3*len(dataset)//4])
-    # dataset, _ = random_split(dataset, [len(dataset)//4, 3*len(dataset)//4])
+    dataset, _ = random_split(dataset, [len(dataset)//4, 3*len(dataset)//4])
+    dataset, _ = random_split(dataset, [len(dataset)//4, 3*len(dataset)//4])
 
     train_size = int(len(dataset) * (1 - split))
     val_size = len(dataset) - train_size

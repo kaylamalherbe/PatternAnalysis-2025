@@ -71,26 +71,26 @@ def train(model, num_epochs, learning_rate, criterion, optimizer, load = False):
                 print(f'Epoch [{epoch+1}/{num_epochs}], Step [{i+1}/{len(dl_aug)}], TRAIN Loss: {loss.item():.4f}')
 
         # use validation set to find loss and accuracy
-        val_loss, val_acc = evaluate_model(model, val_dl_aug, criterion, device)
+            val_loss, val_acc = evaluate_model(model, val_dl_aug, criterion, device)
 
-        print(f'Epoch [{epoch+1}/{num_epochs}]')
-        print(f'  -> Validation Loss: {val_loss:.4f}, Validation Accuracy: {val_acc:.4f}')
+            print(f'Epoch [{epoch+1}/{num_epochs}]')
+            print(f'  -> Validation Loss: {val_loss:.4f}, Validation Accuracy: {val_acc:.4f}')
 
-        # Check if this is the best model so far based on Validation Loss
-        if val_loss < best_val_loss:
-            best_val_loss = val_loss
-            best_epoch = epoch + 1
-            patience_counter = 0  # Reset patience if performance improved
+            # Check if this is the best model so far based on Validation Loss
+            if val_loss < best_val_loss:
+                best_val_loss = val_loss
+                best_epoch = epoch + 1
+                patience_counter = 0  # Reset patience if performance improved
 
-            # Save the best model weights found on the validation set
-            torch.save(model.state_dict(), 'best_model_weights.pth')
+                # Save the best model weights found on the validation set
+                torch.save(model.state_dict(), 'best_model_weights.pth')
 
-        else:
-            patience_counter += 1
-            # If the model performance hasn't improved for 'patience_counter' epochs, stop training.
-            if patience_counter >= early_stop_patience:
-                print(f"\n Early stopping triggered after {epoch+1} epochs.")
-                break
+            else:
+                patience_counter += 1
+                # If the model performance hasn't improved for 'patience_counter' epochs, stop training.
+                if patience_counter >= early_stop_patience:
+                    print(f"\n Early stopping triggered after {epoch+1} epochs.")
+                    break
     print("\n> Training Finished.")
         
     return model
@@ -120,7 +120,7 @@ if __name__ == "__main__":
     )
     model = model.to(device)
 
-    learning_rate = 5e-6
+    learning_rate = 1e-4
     criterion = nn.CrossEntropyLoss(label_smoothing=0.1).to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=5e-4)
 
