@@ -1,6 +1,9 @@
 # Title 
 
 
+Data loading
+![alt text](images/DataLoader.png)
+
 ![Comparison of Covnet to others](images/Covnet.png.png)
 
 ![alt text](images/image.png)

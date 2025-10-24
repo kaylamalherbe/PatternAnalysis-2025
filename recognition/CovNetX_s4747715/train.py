@@ -2,6 +2,9 @@ from dataset import data_loader_aug, test_loader_aug, calc_normalization_values
 import pickle
 import torch
 import torch
+import time
+from modules import ConvNextForImageClassification, evaluate_model
+import torch.nn as nn 
 
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
@@ -11,6 +14,87 @@ if not torch.cuda.is_available():
 
 data_location = r"FILE-PATH\ADNI data set for Alzheimer's disease-20251015T011003Z-1-001\AD_NC\train"
 test_location = r"FILE-PATH\ADNI data set for Alzheimer's disease-20251015T011003Z-1-001\AD_NC\test"
+
+def evaluate(model, test_dl_aug):
+    print("Evaluate Model using Testing")
+    start = time.time() #time generation
+
+    # Evaluate the model
+    model.eval()
+    with torch.no_grad():
+        correct = 0
+        total = 0
+        for images, labels in test_dl_aug:
+            # Move data to the appropriate device (e.g., GPU)
+            images, labels = images.to(device), labels.to(device)
+            outputs = model(images)
+            _, predicted = torch.max(outputs.data, 1)
+            total += labels.size(0)
+            correct += (predicted == labels).sum().item()
+
+        print('Test Accuracy of the model on the {} test images: {} %'.format(total, 100 * correct / total))
+    end = time.time()
+    elapsed = end - start
+    print("Testing took " + str(elapsed) + " secs or " + str(elapsed/60) + " mins in total")
+
+    print('END')
+
+
+def train(model, num_epochs, learning_rate, criterion, optimizer, load = False):
+    
+    best_val_loss = 0.6646
+    best_epoch = 0
+    early_stop_patience = 5
+    patience_counter = 0
+
+    if load:
+        model.load_state_dict(torch.load('best_model_weights.pth'))
+
+    # Train the model
+    
+    for epoch in range(num_epochs):
+        model.train()
+        for i, (images, labels) in enumerate(dl_aug):
+            # Move data to the appropriate device (e.g., GPU)
+            images, labels = images.to(device), labels.to(device)
+
+            # Forward pass
+            outputs = model(images)
+            loss = criterion(outputs, labels)
+
+            # Backward and optimize
+            optimizer.zero_grad()
+            loss.backward()
+            optimizer.step()
+
+            if (i+1) % 10 == 0:
+                print(f'Epoch [{epoch+1}/{num_epochs}], Step [{i+1}/{len(dl_aug)}], TRAIN Loss: {loss.item():.4f}')
+
+        # use validation set to find loss and accuracy
+        val_loss, val_acc = evaluate_model(model, val_dl_aug, criterion, device)
+
+        print(f'Epoch [{epoch+1}/{num_epochs}]')
+        print(f'  -> Validation Loss: {val_loss:.4f}, Validation Accuracy: {val_acc:.4f}')
+
+        # Check if this is the best model so far based on Validation Loss
+        if val_loss < best_val_loss:
+            best_val_loss = val_loss
+            best_epoch = epoch + 1
+            patience_counter = 0  # Reset patience if performance improved
+
+            # Save the best model weights found on the validation set
+            torch.save(model.state_dict(), 'best_model_weights.pth')
+
+        else:
+            patience_counter += 1
+            # If the model performance hasn't improved for 'patience_counter' epochs, stop training.
+            if patience_counter >= early_stop_patience:
+                print(f"\n Early stopping triggered after {epoch+1} epochs.")
+                break
+    print("\n> Training Finished.")
+        
+    return model
+
 
 if __name__ == "__main__":
 
@@ -25,3 +109,21 @@ if __name__ == "__main__":
         pickle.dump(val_dl_aug, f)
     with open('test_loader_aug.pkl', 'wb') as f:
         pickle.dump(test_dl_aug, f)
+
+    model = ConvNextForImageClassification(
+        in_channels=1,  # Changed from 3 to 1
+        stem_features=96,
+        depths=[3, 3, 9, 3],
+        widths=[96, 192, 384, 768],
+        drop_p=0.1,
+        num_classes=2 # Changed to 2 for binary classification (AD/NC)
+    )
+    model = model.to(device)
+
+    learning_rate = 5e-6
+    criterion = nn.CrossEntropyLoss(label_smoothing=0.1).to(device)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=5e-4)
+
+    #Evaluate model
+    model = train(model, num_epochs=32, learning_rate=learning_rate, criterion=criterion, optimizer=optimizer)
+    evaluate(model, test_dl_aug)
