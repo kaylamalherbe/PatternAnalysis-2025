@@ -57,8 +57,8 @@ def data_loader_aug(dir, batch_size=64, split=0.3, seed=3710, mean=[0.1164], std
 
     dataset = datasets.ImageFolder(dir, transform=transform)
     #random choose half the dataset
-    dataset, _ = random_split(dataset, [len(dataset)//4, 3*len(dataset)//4])
-    dataset, _ = random_split(dataset, [len(dataset)//4, 3*len(dataset)//4])
+    # dataset, _ = random_split(dataset, [len(dataset)//4, 3*len(dataset)//4])
+    # dataset, _ = random_split(dataset, [len(dataset)//4, 3*len(dataset)//4])
 
     train_size = int(len(dataset) * (1 - split))
     val_size = len(dataset) - train_size
