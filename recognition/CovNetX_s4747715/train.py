@@ -144,6 +144,7 @@ Epoch [50/50]
 Training took 2148.47243976593 secs or 35.807873996098834 mins in total
 
 > Testing
-Test Accuracy of the model on the 9000 test images: 70.94444444444444 %
-Testing took 3279.7248153686523 secs or 54.66208025614421 mins in total
+> Testing with unaug data
+Test Accuracy of the model on the 9000 test images: 71.4 %
+Testing took 67.7975766658783 secs or 1.1299596110979715 mins in total
 END"""
