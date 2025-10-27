@@ -40,9 +40,9 @@ def evaluate(model, test_dl_aug):
     print('END')
 
 
-def train(model, num_epochs, learning_rate, criterion, optimizer, load = False):
+def train(model, num_epochs, learning_rate, criterion, optimizer, scheduler=scheduler, load = False):
     
-    best_val_loss = 0.6646
+    best_val_loss = float('inf')
     best_epoch = 0
     early_stop_patience = 5
     patience_counter = 0
@@ -69,6 +69,7 @@ def train(model, num_epochs, learning_rate, criterion, optimizer, load = False):
 
             if (i+1) % 10 == 0:
                 print(f'Epoch [{epoch+1}/{num_epochs}], Step [{i+1}/{len(dl_aug)}], TRAIN Loss: {loss.item():.4f}')
+            scheduler.step()
 
         # use validation set to find loss and accuracy
         val_loss, val_acc = evaluate_model(model, val_dl_aug, criterion, device)
@@ -95,14 +96,6 @@ def train(model, num_epochs, learning_rate, criterion, optimizer, load = False):
         
     return model
 
-""" Last epoch result 
-Epoch [35/35], Step [220/236], TRAIN Loss: 0.3864
-Epoch [35/35], Step [230/236], TRAIN Loss: 0.4500
-Epoch [35/35]
-  -> Validation Loss: 0.4080, Validation Accuracy: 0.8715
-"""
-
-
 if __name__ == "__main__":
 
     mean, std = calc_normalization_values(data_location)
@@ -127,14 +120,30 @@ if __name__ == "__main__":
     )
     model = model.to(device)
 
-    learning_rate = 5e-6
+    learning_rate = 1e-6
+    max_lr = 0.1
+    num_epochs = 50
+
     criterion = nn.CrossEntropyLoss(label_smoothing=0.1).to(device)
-    optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=5e-4)
+    # optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=5e-4)
+    optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate, momentum=0.9, weight_decay=5e-4)
+
+    
+    #Piecewise Linear Schedule
+    total_step = len(dl_aug)
+    scheduler = torch.optim.lr_scheduler.OneCycleLR(optimizer, max_lr=max_lr, steps_per_epoch=total_step, epochs=num_epochs)
 
     #Evaluate model
-    model = train(model, num_epochs=32, learning_rate=learning_rate, criterion=criterion, optimizer=optimizer)
+    model = train(model, num_epochs=32, learning_rate=learning_rate, criterion=criterion, optimizer=optimizer, scheduler=scheduler, load=False)
     evaluate(model, test_dl_aug)
 
-    """Test Accuracy of the model on the 9000 test images: 65.11111111111111 %
-Testing took 3037.7184438705444 secs or 50.62864073117574 mins in total
+    """Epoch [50/50], Step [100/236], TRAIN Loss: 0.2710
+Epoch [50/50], Step [200/236], TRAIN Loss: 0.2622
+Epoch [50/50]
+  -> Validation Loss: 0.3041, Validation Accuracy: 0.9376
+Training took 2148.47243976593 secs or 35.807873996098834 mins in total
+
+> Testing
+Test Accuracy of the model on the 9000 test images: 70.94444444444444 %
+Testing took 3279.7248153686523 secs or 54.66208025614421 mins in total
 END"""

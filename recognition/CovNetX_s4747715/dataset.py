@@ -34,7 +34,7 @@ def calc_normalization_values(dir):
 
 
 # Load data set
-def data_loader_aug(dir, batch_size=64, split=0.3, seed=3710, mean=[0.1164], std=[0.2307]):
+def data_loader_aug(dir, batch_size=64, split=0.2, seed=3710, mean=[0.1164], std=[0.2307]):
     # augement data
 
     # transform = transforms.Compose([

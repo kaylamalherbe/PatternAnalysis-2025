@@ -4,6 +4,8 @@ from torch import nn, Tensor
 from typing import List
 
 class ConvNeXtBlock(nn.Module):
+    """
+    """
     def __init__(self, in_channels: int, stem_features: int,drop_p: float = .0):
         super().__init__()
         # Depthwise Conv2d (kernel=7, padding=3, groups=channels)
@@ -22,14 +24,12 @@ class ConvNeXtBlock(nn.Module):
     def forward(self, x: Tensor) -> Tensor:
         shortcut = x
         x = self.dw_conv(x)
-
         # Permute for LayerNorm
         x = x.permute(0, 2, 3, 1)   # (B, H, W, C)
         x = self.norm(x)
         x = x.permute(0, 3, 1, 2)
         x = self.mlp(x)
         x = shortcut + self.stochastic_depth(x)
-
         return x
 
 class Downsample(nn.Module):
@@ -52,6 +52,10 @@ class Downsample(nn.Module):
             return x
 
 class ConvNext(nn.Module):
+   """
+   ConvNext Model adapted for grayscale images and binary classification.
+   1 input channel, 2 output classes.
+   """
    def __init__(self, num_channels: int, stem_features: int, num_classes: int = 2, depths=[3,3,9,1], widths=[96, 192, 384, 768],):
         super().__init__()
         # Stage Stem input 224 x 224 x 3
@@ -75,6 +79,9 @@ class ConvNext(nn.Module):
         self.linear = nn.Linear(widths[-1], num_classes)
 
    def _make_layer(self, block, in_channels, out_channels, num_blocks, ds=True):
+        """
+        Create ConvNeXt layers with downsampling with predefined number of blocks.
+        """
         layers = []
         for i in range(num_blocks):
             layers.append(block(in_channels, in_channels))
@@ -98,12 +105,10 @@ class ConvNext(nn.Module):
         x = self.stage3(x)
         x = self.stage4(x)
 
-
         # head
         gap = nn.AdaptiveAvgPool2d((1, 1))
         x = gap(x)
         x = x.flatten(1)
-
         x = self.norm(x)
         x = self.linear(x)
         return x
