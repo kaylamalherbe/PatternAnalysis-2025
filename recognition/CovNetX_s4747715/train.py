@@ -3,7 +3,7 @@ import pickle
 import torch
 import torch
 import time
-from modules import ConvNextForImageClassification, evaluate_model
+from modules import ConvNext, evaluate_model
 import torch.nn as nn 
 
 
@@ -110,12 +110,12 @@ if __name__ == "__main__":
     with open('test_loader_aug.pkl', 'wb') as f:
         pickle.dump(test_dl_aug, f)
 
-    model = ConvNextForImageClassification(
-        in_channels=1,  # Changed from 3 to 1
+    model = ConvNext(
+        num_channels=1,  # Changed from 3 to 1
         stem_features=96,
-        depths=[3, 3, 9, 3],
+        depths=[3, 3, 9, 1],
         widths=[96, 192, 384, 768],
-        drop_p=0.1,
+        dropout_p=0.1,
         num_classes=2 # Changed to 2 for binary classification (AD/NC)
     )
     model = model.to(device)
