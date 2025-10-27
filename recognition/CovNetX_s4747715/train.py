@@ -67,7 +67,7 @@ def train(model, num_epochs, learning_rate, criterion, optimizer, scheduler=sche
             loss.backward()
             optimizer.step()
 
-            if (i+1) % 10 == 0:
+            if (i+1) % 100 == 0:
                 print(f'Epoch [{epoch+1}/{num_epochs}], Step [{i+1}/{len(dl_aug)}], TRAIN Loss: {loss.item():.4f}')
             scheduler.step()
 
@@ -136,15 +136,3 @@ if __name__ == "__main__":
     #Evaluate model
     model = train(model, num_epochs=32, learning_rate=learning_rate, criterion=criterion, optimizer=optimizer, scheduler=scheduler, load=False)
     evaluate(model, test_dl_aug)
-
-    """Epoch [50/50], Step [100/236], TRAIN Loss: 0.2710
-Epoch [50/50], Step [200/236], TRAIN Loss: 0.2622
-Epoch [50/50]
-  -> Validation Loss: 0.3041, Validation Accuracy: 0.9376
-Training took 2148.47243976593 secs or 35.807873996098834 mins in total
-
-> Testing
-> Testing with unaug data
-Test Accuracy of the model on the 9000 test images: 71.4 %
-Testing took 67.7975766658783 secs or 1.1299596110979715 mins in total
-END"""

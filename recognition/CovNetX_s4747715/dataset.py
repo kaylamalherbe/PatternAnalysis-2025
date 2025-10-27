@@ -43,16 +43,16 @@ def data_loader_aug(dir, batch_size=64, split=0.2, seed=3710, mean=[0.1164], std
     #     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
     # ])
     transform = transforms.Compose([
-      transforms.Resize((IMAGE_DIM, IMAGE_DIM)),
+         transforms.Resize((IMAGE_DIM, IMAGE_DIM)),
+        # transforms.RandomResizedCrop((IMAGE_DIM, IMAGE_DIM), antialias=True),
         transforms.Grayscale(num_output_channels=1),
-        # transforms.RandomHorizontalFlip(p=0.3),
-        # transforms.RandomRotation(degrees=10),
-        # transforms.ColorJitter(brightness=0.1, contrast=0.1),
+        # transforms.RandomHorizontalFlip(p=0.5),
+        transforms.RandomRotation(degrees=10),
+        transforms.ColorJitter(brightness=0.1, contrast=0.1),
         transforms.RandomAffine(degrees=5, translate=(0.02, 0.02), scale=(0.95, 1.05)),
-        # transforms.RandomResizedCrop(size=IMAGE_DIM, scale=(0.9, 1.1)),
         transforms.ToTensor(),
         transforms.Normalize(mean=mean, std=std),
-        # transforms.RandomErasing(p=0.3, scale=(0.02, 0.05), ratio=(0.3, 3.3)),
+        transforms.RandomErasing(p=0.3, scale=(0.02, 0.05), ratio=(0.3, 3.3)),
     ])
 
     dataset = datasets.ImageFolder(dir, transform=transform)
@@ -75,7 +75,7 @@ def data_loader_aug(dir, batch_size=64, split=0.2, seed=3710, mean=[0.1164], std
 
 def test_loader_aug(dir, batch_size, mean, std):
     transform = transforms.Compose([
-      transforms.Resize((IMAGE_DIM, IMAGE_DIM)),
+        transforms.Resize((IMAGE_DIM, IMAGE_DIM)),
         transforms.Grayscale(num_output_channels=1),
         transforms.ToTensor(),
         transforms.Normalize(mean=mean, std=std),
