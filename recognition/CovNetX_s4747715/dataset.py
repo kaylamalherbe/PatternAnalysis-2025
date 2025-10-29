@@ -7,6 +7,7 @@ import torchvision.datasets as datasets
 from torch.utils.data import DataLoader
 import matplotlib.pyplot as plt
 import numpy as np
+from collections import Counter
 
 IMAGE_DIM = 224
 
@@ -17,42 +18,75 @@ def calc_normalization_values(dir):
       transforms.Grayscale(num_output_channels=1),
       transforms.ToTensor()
   ])
-  img_tr = datasets.ImageFolder(dir, transform=transform)[0][0]
+  dataset = datasets.ImageFolder(dir, transform=transform)
+  dataloader = DataLoader(dataset, batch_size=64, shuffle=False, num_workers=4)
 
-  # Convert tensor image to numpy array
-  img_np = np.array(img_tr)
+  mean = 0.0
+  std = 0.0
+  total_images_count = 0
+  for images, _ in dataloader:
+      # Rearrange batch to be the first dimension
+      batch_samples = images.size(0)
+      images = images.view(batch_samples, images.size(1), -1)
+      mean += images.mean(2).sum(0)
+      std += images.std(2).sum(0)
+      total_images_count += batch_samples
 
-  mean, std = img_tr.mean([1,2]), img_tr.std([1,2])
+  mean /= total_images_count
+  std /= total_images_count
 
   # print mean and std
   print("mean and std before normalize:")
-  print("Mean of the image:", mean)
-  print("Std of the image:", std)
+  print("Mean of the dataset:", mean)
+  print("Std of the dataset:", std)
 
   return mean, std
 
+def check_validation_split(dl_aug, val_dl_aug):
+    
+    # Get the underlying dataset from the DataLoaders
+    # Since random_split returns Subset, we need to access the original dataset and the indices
+    train_dataset = dl_aug.dataset.dataset
+    train_indices = dl_aug.dataset.indices
+    val_dataset = val_dl_aug.dataset.dataset
+    val_indices = val_dl_aug.dataset.indices
 
 
-# Load data set
-def data_loader_aug(dir, batch_size=64, split=0.2, seed=3710, mean=[0.1164], std=[0.2307]):
+    # Get the targets for the subsets
+    train_targets = [train_dataset.targets[i] for i in train_indices]
+    val_targets = [val_dataset.targets[i] for i in val_indices]
+
+
+    # Count the occurrences of each class label
+    train_class_counts = Counter(train_targets)
+    val_class_counts = Counter(val_targets)
+
+    print("Class distribution in dl_aug (Training DataLoader):")
+    for class_idx, count in train_class_counts.items():
+        # Get the class name from the dataset
+        class_name = train_dataset.classes[class_idx]
+        print(f"Class {class_name} ({class_idx}): {count}")
+
+    print("\nClass distribution in val_dl_aug (Validation DataLoader):")
+    for class_idx, count in val_class_counts.items():
+        # Get the class name from the dataset
+        class_name = val_dataset.classes[class_idx]
+        print(f"Class {class_name} ({class_idx}): {count}")
+
+
+def data_loader_aug(dir, batch_size=64, split=0.2, seed=3710, mean=[0.1155], std=[0.2224]):
     # augement data
-
-    # transform = transforms.Compose([
-    #     transforms.Resize((224, 224)),
-    #     transforms.ToTensor(),
-    #     transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-    # ])
     transform = transforms.Compose([
-         transforms.Resize((IMAGE_DIM, IMAGE_DIM)),
-        # transforms.RandomResizedCrop((IMAGE_DIM, IMAGE_DIM), antialias=True),
+        #  transforms.Resize((IMAGE_DIM, IMAGE_DIM)),
+        transforms.RandomResizedCrop((IMAGE_DIM, IMAGE_DIM), scale=(0.9, 1.0), antialias=True),
         transforms.Grayscale(num_output_channels=1),
-        # transforms.RandomHorizontalFlip(p=0.5),
         transforms.RandomRotation(degrees=10),
-        transforms.ColorJitter(brightness=0.1, contrast=0.1),
-        transforms.RandomAffine(degrees=5, translate=(0.02, 0.02), scale=(0.95, 1.05)),
+        transforms.ColorJitter(brightness=0.1, contrast=0.1), # Adjust brightness and contrast slightly
+        transforms.RandomAffine(degrees=5, translate=(0.05, 0.05), scale=(0.9, 1.1)), # Slightly increased translate and scale
+        transforms.GaussianBlur(kernel_size=3),
         transforms.ToTensor(),
         transforms.Normalize(mean=mean, std=std),
-        transforms.RandomErasing(p=0.3, scale=(0.02, 0.05), ratio=(0.3, 3.3)),
+        transforms.RandomErasing(p=0.7, scale=(0.02, 0.2), ratio=(0.3, 3.3)),
     ])
 
     dataset = datasets.ImageFolder(dir, transform=transform)
@@ -73,7 +107,7 @@ def data_loader_aug(dir, batch_size=64, split=0.2, seed=3710, mean=[0.1164], std
     return train_dataloader, val_dataloader
 
 
-def test_loader_aug(dir, batch_size, mean, std):
+def test_loader_aug(dir, batch_size, mean=[0.1155], std=[0.2224]):
     transform = transforms.Compose([
         transforms.Resize((IMAGE_DIM, IMAGE_DIM)),
         transforms.Grayscale(num_output_channels=1),
@@ -83,9 +117,6 @@ def test_loader_aug(dir, batch_size, mean, std):
 
     dataset = datasets.ImageFolder(dir, transform=transform)
 
-    test_dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False)
+    test_dataloader = DataLoader(dataset, batch_size=batch_size, shuffle=False, num_workers=4, pin_memory=True)
 
     return test_dataloader
-
-
-

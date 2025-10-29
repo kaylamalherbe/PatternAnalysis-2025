@@ -4,6 +4,7 @@ import torch
 import torch
 import time
 from modules import ConvNext, evaluate_model
+from predict import predict, thresholding
 import torch.nn as nn 
 
 
@@ -15,29 +16,38 @@ if not torch.cuda.is_available():
 data_location = r"FILE-PATH\ADNI data set for Alzheimer's disease-20251015T011003Z-1-001\AD_NC\train"
 test_location = r"FILE-PATH\ADNI data set for Alzheimer's disease-20251015T011003Z-1-001\AD_NC\test"
 
-def evaluate(model, test_dl_aug):
-    print("Evaluate Model using Testing")
-    start = time.time() #time generation
-
-    # Evaluate the model
+def evaluate_model(model, dataloader, criterion, device, threshold=0.6):
+    # Set the model to evaluation mode
     model.eval()
+    total_loss = 0
+    correct_predictions = 0
+    total_samples = 0
+
     with torch.no_grad():
-        correct = 0
-        total = 0
-        for images, labels in test_dl_aug:
-            # Move data to the GPU
+        for images, labels in dataloader:
+            # Move data to the appropriate device (e.g., GPU)
             images, labels = images.to(device), labels.to(device)
+            
+            labels = labels.unsqueeze(1).float() # Unsqueeze labels to match model output shape and cast to float
+
             outputs = model(images)
-            _, predicted = torch.max(outputs.data, 1)
-            total += labels.size(0)
-            correct += (predicted == labels).sum().item()
+            loss = criterion(outputs, labels)
+            total_loss += loss.item() * images.size(0)
 
-        print('Test Accuracy of the model on the {} test images: {} %'.format(total, 100 * correct / total))
-    end = time.time()
-    elapsed = end - start
-    print("Testing took " + str(elapsed) + " secs or " + str(elapsed/60) + " mins in total")
+            # Calculate accuracy (assuming multi-class/binary classification)
+            # Use torch.round to get binary predictions from logits
+            # predicted = torch.round(torch.sigmoid(outputs))
+            probability = torch.sigmoid(outputs)
+            predicted = (probability > threshold).long()
+            correct_predictions += (predicted == labels).sum().item()
+            total_samples += labels.size(0)
 
-    print('END')
+    avg_loss = total_loss / total_samples
+    accuracy = correct_predictions / total_samples
+
+    # Set the model back to training mode
+    model.train()
+    return avg_loss, accuracy
 
 
 def train(model, num_epochs, learning_rate, criterion, optimizer, scheduler=scheduler, load = False):
@@ -46,18 +56,21 @@ def train(model, num_epochs, learning_rate, criterion, optimizer, scheduler=sche
     best_epoch = 0
     early_stop_patience = 5
     patience_counter = 0
+    val_max = 0.95
+    validation_loss_values = []
+    validation_acc_values = []
+    learning_rate_values = []
 
-    if load:
-        model.load_state_dict(torch.load('best_model_weights.pth'))
+    # model.load_state_dict(torch.load('best_model_weights.pth'))
 
     # Train the model
-    
+    start = time.time() #time generation
     for epoch in range(num_epochs):
         model.train()
         for i, (images, labels) in enumerate(dl_aug):
             # Move data to the appropriate device (e.g., GPU)
             images, labels = images.to(device), labels.to(device)
-
+            labels = labels.unsqueeze(1).float() # Unsqueeze labels to match model output shape and cast to float
             # Forward pass
             outputs = model(images)
             loss = criterion(outputs, labels)
@@ -69,11 +82,14 @@ def train(model, num_epochs, learning_rate, criterion, optimizer, scheduler=sche
 
             if (i+1) % 100 == 0:
                 print(f'Epoch [{epoch+1}/{num_epochs}], Step [{i+1}/{len(dl_aug)}], TRAIN Loss: {loss.item():.4f}')
+
             scheduler.step()
+            learning_rate_values.append(optimizer.param_groups[0]['lr'])
 
         # use validation set to find loss and accuracy
         val_loss, val_acc = evaluate_model(model, val_dl_aug, criterion, device)
-
+        validation_loss_values.append(val_loss)
+        validation_acc_values.append(val_acc)
         print(f'Epoch [{epoch+1}/{num_epochs}]')
         print(f'  -> Validation Loss: {val_loss:.4f}, Validation Accuracy: {val_acc:.4f}')
 
@@ -85,22 +101,56 @@ def train(model, num_epochs, learning_rate, criterion, optimizer, scheduler=sche
 
             # Save the best model weights found on the validation set
             torch.save(model.state_dict(), 'best_model_weights.pth')
-
+        
         else:
             patience_counter += 1
             # If the model performance hasn't improved for 'patience_counter' epochs, stop training.
             if patience_counter >= early_stop_patience:
                 print(f"\n Early stopping triggered after {epoch+1} epochs.")
                 break
+        if val_acc >= val_max:
+            print(f"\n Early stopping triggered after {epoch+1} epochs.")
+            break
+    end = time.time()
+    elapsed = end - start
+    print("Training took " + str(elapsed) + " secs or " + str(elapsed/60) + " mins in total")
+
     print("\n> Training Finished.")
+
+    # plot validation loss vs epochs
+    import matplotlib.pyplot as plt
+    # Plot validation loss vs epochs
+    plt.figure(figsize=(10, 6))
+    plt.plot(range(1, len(validation_loss_values) + 1), validation_loss_values)
+    plt.xlabel('Epoch')
+    plt.ylabel('Validation Loss')
+    plt.title('Validation Loss vs. Epochs')
+    plt.grid(True)
+    plt.show()
+
+    plt.figure(figsize=(10, 6))
+    plt.plot(range(1, len(validation_acc_values) + 1), validation_acc_values)
+    plt.xlabel('Epoch')
+    plt.ylabel('Validation Accuracy')
+    plt.title('Validation Accuracy vs. Epochs')
+    plt.grid(True)
+    plt.show()
+
+    plt.figure(figsize=(10, 6))
+    plt.plot(range(1, len(learning_rate_values) + 1), learning_rate_values)
+    plt.xlabel('step')
+    plt.ylabel('Learning Rate')
+    plt.title('Learning Rate vs Step')
+    plt.grid(True)
+    plt.show()
         
     return model
 
 if __name__ == "__main__":
 
-    mean, std = calc_normalization_values(data_location)
-    dl_aug, val_dl_aug = data_loader_aug(data_location, batch_size=64, mean=mean, std=std)
-    test_dl_aug = test_loader_aug(test_location, batch_size=64, mean=mean, std=std)
+    # mean, std = calc_normalization_values(data_location)
+    dl_aug, val_dl_aug = data_loader_aug(data_location, batch_size=64)
+    test_dl_aug = test_loader_aug(test_location, batch_size=64)
 
     # save to pickle
     with open('train_loader_aug.pkl', 'wb') as f:
@@ -110,24 +160,30 @@ if __name__ == "__main__":
     with open('test_loader_aug.pkl', 'wb') as f:
         pickle.dump(test_dl_aug, f)
 
+    # check_validation_split()
+    
     model = ConvNext(
         num_channels=1,  # Changed from 3 to 1
         stem_features=96,
         depths=[3, 3, 9, 1],
         widths=[96, 192, 384, 768],
-        dropout_p=0.1,
+        dropout_p=0.3,
+        drop_path_rate=0.4,
         num_classes=2 # Changed to 2 for binary classification (AD/NC)
     )
     model = model.to(device)
 
-    learning_rate = 1e-6
-    max_lr = 0.1
+    learning_rate = 1e-5
+    max_lr = 1e-3 # 0.01
     num_epochs = 50
 
-    criterion = nn.CrossEntropyLoss(label_smoothing=0.1).to(device)
-    # optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=5e-4)
-    optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate, momentum=0.9, weight_decay=5e-4)
 
+    # set criterion to CrossEntropyLoss for multi-class classification
+    criterion = nn.BCEWithLogitsLoss().to(device)
+    # optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=5e-4)
+    # criterion = nn.CrossEntropyLoss(label_smoothing=0.1).to(device)
+    optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=5e-3)
+    # optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate, momentum=0.9, weight_decay=5e-4)
     
     #Piecewise Linear Schedule
     total_step = len(dl_aug)
@@ -135,4 +191,5 @@ if __name__ == "__main__":
 
     #Evaluate model
     model = train(model, num_epochs=32, learning_rate=learning_rate, criterion=criterion, optimizer=optimizer, scheduler=scheduler, load=False)
-    evaluate(model, test_dl_aug)
+    performance = predict(model, test_dl_aug)
+    opt_thres, performance = thresholding(model, device, test_dl_aug)
