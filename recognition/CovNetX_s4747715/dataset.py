@@ -78,15 +78,19 @@ def data_loader_aug(dir, batch_size=64, split=0.2, seed=3710, mean=[0.1155], std
     # augement data
     transform = transforms.Compose([
         #  transforms.Resize((IMAGE_DIM, IMAGE_DIM)),
-        transforms.RandomResizedCrop((IMAGE_DIM, IMAGE_DIM), scale=(0.9, 1.0), antialias=True),
+        transforms.RandomResizedCrop((IMAGE_DIM, IMAGE_DIM), scale=(0.95, 1.0), antialias=True),
         transforms.Grayscale(num_output_channels=1),
         transforms.RandomRotation(degrees=10),
-        transforms.ColorJitter(brightness=0.1, contrast=0.1), # Adjust brightness and contrast slightly
-        transforms.RandomAffine(degrees=5, translate=(0.05, 0.05), scale=(0.9, 1.1)), # Slightly increased translate and scale
-        transforms.GaussianBlur(kernel_size=3),
+        transforms.RandomAdjustSharpness(sharpness_factor=2, p=0.3),
+        transforms.RandomAutocontrast(p=0.2),
+        transforms.RandomPosterize(bits=4, p=0.1),
+        # transforms.ColorJitter(brightness=0.1, contrast=0.1), # Adjust brightness and contrast slightly
+        # transforms.RandomAffine(degrees=5, translate=(0.05, 0.05), scale=(0.9, 1.1)), # Slightly increased translate and scale
+        transforms.GaussianBlur(kernel_size=3,sigma=(0.1, 0.5)),
         transforms.ToTensor(),
         transforms.Normalize(mean=mean, std=std),
-        transforms.RandomErasing(p=0.7, scale=(0.02, 0.2), ratio=(0.3, 3.3)),
+        transforms.RandomErasing(p=0.8, scale=(0.02, 0.2), ratio=(0.3, 3.3)),
+        # Consider adding GaussianBlur with a small kernel size
     ])
 
     dataset = datasets.ImageFolder(dir, transform=transform)
