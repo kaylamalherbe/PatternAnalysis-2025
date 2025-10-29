@@ -15,7 +15,7 @@ Data loading
 
 Results of last run
 Confusion Matrix
-![alt text](image.png)
+![alt text](image-5.png)
 
 Scheduler Learning rate
 ![alt text](image-1.png)
@@ -26,20 +26,8 @@ Validation Accuracy vs epochs
 validation loss vs epochs 
 ![alt text](image-3.png)
 
- -> Validation Loss: 0.2579, Validation Accuracy: 0.9645
-Epoch [50/50], Step [100/269], TRAIN Loss: 0.2191
-Epoch [50/50], Step [200/269], TRAIN Loss: 0.2421
-Epoch [50/50]
-  -> Validation Loss: 0.2600, Validation Accuracy: 0.9624
-Training took 2111.4041414260864 secs or 35.19006902376811 mins in total
-
-> Testing
-Test Accuracy of the model on the 9000 test images: 74.73333333333333 %
-Testing took 37.422730445861816 secs or 0.623712174097697 mins in total
-FN = 500
-FP = 1774
-TN = 2686
-TP = 4040
+Thresholding
+![alt text](image-6.png)
 
 References
 https://medium.com/augmented-startups/convnext-the-return-of-convolution-networks-e70cbe8dabcc
