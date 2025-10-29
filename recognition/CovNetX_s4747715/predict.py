@@ -7,6 +7,15 @@ import numpy as np
 
 
 def predict(model, test_dl_aug, device):
+    """ Evaluate the trained model on the test dataset and print accuracy and 
+    plot confusion matrix.
+    Args:
+        model (nn.Module): Trained model.
+        test_dl_aug (DataLoader): DataLoader for the test dataset.
+        device (torch.device): Device to run the evaluation on. 
+    Returns:
+        float: Test accuracy in percentage.
+    """
     print("> Testing")
     start = time.time() #time generation
 
@@ -58,7 +67,14 @@ def predict(model, test_dl_aug, device):
 
 def thresholding(model, device, test_dl_aug):
     """
-    Evaluate model accuracy across different threshold values."""
+    Evaluate model accuracy across different threshold values.
+    Args:
+        model (nn.Module): Trained model.
+        device (torch.device): Device to run the evaluation on.
+        test_dl_aug (DataLoader): DataLoader for the test dataset.
+    Returns:
+        Tuple[float, float]: Optimal threshold and corresponding accuracy.
+    """
     accuracy = []
     opt_thres = 0.5
     for i in range(25, 50):

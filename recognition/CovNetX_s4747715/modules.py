@@ -4,6 +4,17 @@ from torch import nn, Tensor
 from typing import List
 
 class ConvNeXtBlock(nn.Module):
+    """
+    ConvNeXt Block as described in the ConvNeXt paper.
+    Args:   
+        in_channels (int): Number of input channels.
+        stem_features (int): Number of features in the stem.
+        drop_p (float, optional): Drop path rate for stochastic depth. Defaults to 0
+        dropout_p (float, optional): Dropout probability within the block. Defaults to 0.1.
+    Returns:
+        Tensor: Output tensor after applying the ConvNeXt block.
+
+    """
     def __init__(self, in_channels: int, stem_features: int,  drop_p: float = .0, dropout_p: float = .1):
         super().__init__()
         # Depthwise Conv2d (kernel=7, padding=3, groups=channels)
@@ -21,6 +32,11 @@ class ConvNeXtBlock(nn.Module):
         self.stochastic_depth = StochasticDepth(drop_p, mode='row') if drop_p > 0. else nn.Identity()
 
     def forward(self, x: Tensor) -> Tensor:
+        """ Forward pass for the ConvNeXt block.
+        Args:
+            x (Tensor): Input tensor of shape (B, C, H, W).
+        Returns:
+            Tensor: Output tensor of shape (B, C, H, W)."""
         shortcut = x
         x = self.dw_conv(x)
 
@@ -34,7 +50,15 @@ class ConvNeXtBlock(nn.Module):
         return x
 
 class Downsample(nn.Module):
+        """ Downsampling layer to reduce spatial dimensions and increase channels.
+        Args:   
+            in_channels (int): Number of input channels.
+            out_channels (int): Number of output channels.
+        Returns:
+            Tensor: Output tensor after downsampling.
+        """
         def __init__(self, in_channels, out_channels):
+            
             super().__init__()
 
             # Make them proper attributes so model.to(device) finds them
@@ -42,6 +66,11 @@ class Downsample(nn.Module):
             self.conv = nn.Conv2d(in_channels, out_channels, kernel_size=2, stride=2)
 
         def forward(self, x: Tensor) -> Tensor:
+            """ Forward pass for the downsampling layer.
+            Args:
+                x (Tensor): Input tensor of shape (B, C, H, W).
+            Returns:
+                Tensor: Output tensor of shape (B, C_out, H/2, W/2)."""
             # 1. Permute to (B, H, W, C) for LayerNorm
             x = x.permute(0, 2, 3, 1)
             # 2. Apply LayerNorm over channels
@@ -53,6 +82,19 @@ class Downsample(nn.Module):
             return x
 
 class ConvNext(nn.Module):
+   """ ConvNeXt Model for binary classification.
+   Args:   
+       num_channels (int): Number of input channels.
+       stem_features (int): Number of features in the stem.
+       num_classes (int, optional): Number of output classes. Defaults to 2.
+       depths (List[int], optional): Number of ConvNeXt blocks in each stage. Defaults to [3,3,9,1].
+       widths (List[int], optional): Number of channels in each stage. 
+            Defaults to [96, 192, 384, 768].
+       dropout_p (float, optional): Dropout probability. Defaults to 0.3.
+       drop_path_rate (float, optional): Maximum drop path rate for stochastic depth. Defaults to 0.4.
+    Returns:
+       Tensor: Output tensor after applying the ConvNeXt model.
+       """
    def __init__(self, num_channels: int, stem_features: int, num_classes: int = 2, depths=[3,3,9,1], widths=[96, 192, 384, 768], dropout_p: float = 0.3, drop_path_rate: float = 0.4):
         super().__init__()
         # Stage Stem input 224 x 224 x 3
@@ -86,6 +128,20 @@ class ConvNext(nn.Module):
         self.linear = nn.Linear(widths[-1], 1)
 
    def _make_layer(self, block, in_channels, out_channels, num_blocks, ds=True, dropout_p: float = 0.1, dpr: List[float] = None, cur: int = 0):
+        """ Create a stage consisting of multiple ConvNeXt blocks and an optional downsampling layer.
+        Args:
+            block (nn.Module): ConvNeXt block class.
+            in_channels (int): Number of input channels.
+            out_channels (int): Number of output channels.
+            num_blocks (int): Number of ConvNeXt blocks in the stage.
+            ds (bool, optional): Whether to include a downsampling layer at the end. Defaults to True.
+            dropout_p (float, optional): Dropout probability within the blocks. Defaults to 0.1.
+            dpr (List[float], optional): List of drop path rates for stochastic depth. Defaults to None.
+            cur (int, optional): Current index in the drop path rate list. Defaults to 0.
+        Returns:
+            nn.Sequential: Sequential container of the stage.
+            
+        """
         layers = []
         for i in range(num_blocks):
             # Pass the next drop rate from the list to the block
@@ -104,6 +160,12 @@ class ConvNext(nn.Module):
 
 
    def forward(self, x: Tensor) -> Tensor:
+        """ Forward pass for the ConvNeXt model.
+        Args:   
+            x (Tensor): Input tensor of shape (B, C, H, W).
+        Returns:
+            Tensor: Output tensor of shape (B, num_classes).
+        """
         # Stem
         x = self.stem_conv(x)
         # Permute for LayerNorm (B, C, H, W) -> (B, H, W, C)
@@ -117,12 +179,10 @@ class ConvNext(nn.Module):
         x = self.stage3(x)
         x = self.stage4(x)
 
-
         # head
         gap = nn.AdaptiveAvgPool2d((1, 1))
         x = gap(x)
         x = x.flatten(1)
-
         x = self.norm(x)
         x = self.dropout(x) # Applied Dropout
         x = self.linear(x)

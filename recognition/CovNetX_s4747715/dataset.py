@@ -11,8 +11,13 @@ from collections import Counter
 
 IMAGE_DIM = 224
 
-
 def calc_normalization_values(dir):
+  """Calculate mean and standard deviation of entire dataset for normalization. 
+  These values can then be used in the transforms.Normalize() function.
+    Args:
+      dir (str): Directory containing the dataset.  
+    Returns:
+      Tuple[Tensor, Tensor]: Mean and standard deviation tensors."""
   # define custom transform function
   transform = transforms.Compose([
       transforms.Grayscale(num_output_channels=1),
@@ -43,7 +48,14 @@ def calc_normalization_values(dir):
   return mean, std
 
 def check_validation_split(dl_aug, val_dl_aug):
+    """Check and print the class distribution in training and validation 
+    DataLoaders. If split between classes is uneven, consider adjusting the 
+    split ratio or using stratified sampling.
+    Args:
+        dl_aug (DataLoader): Training DataLoader.
+        val_dl_aug (DataLoader): Validation DataLoader.
     
+    """
     # Get the underlying dataset from the DataLoaders
     # Since random_split returns Subset, we need to access the original dataset and the indices
     train_dataset = dl_aug.dataset.dataset
@@ -75,6 +87,17 @@ def check_validation_split(dl_aug, val_dl_aug):
 
 
 def data_loader_aug(dir, batch_size=64, split=0.2, seed=3710, mean=[0.1155], std=[0.2224]):
+    """Create DataLoader with augmentation for training and validation sets.
+    Args:
+        dir (str): Directory containing the dataset.
+        batch_size (int, optional): Batch size for DataLoader. Defaults to 64.
+        split (float, optional): Proportion of data to use for validation. Defaults to 0.2.
+        seed (int, optional): Random seed for reproducibility. Defaults to 3710.
+        mean (list, optional): Mean for normalization. Defaults to [0.1155].
+        std (list, optional): Std deviation for normalization. Defaults to [0.2224].
+    Returns:
+        Tuple[DataLoader, DataLoader]: Training and validation DataLoaders.
+    """
     # augement data
     transform = transforms.Compose([
         #  transforms.Resize((IMAGE_DIM, IMAGE_DIM)),
@@ -112,6 +135,15 @@ def data_loader_aug(dir, batch_size=64, split=0.2, seed=3710, mean=[0.1155], std
 
 
 def test_loader_aug(dir, batch_size, mean=[0.1155], std=[0.2224]):
+    """Create DataLoader for test set, only required transforms performed.
+    Args:
+        dir (str): Directory containing the test dataset.
+        batch_size (int): Batch size for DataLoader.
+        mean (list, optional): Mean for normalization. Defaults to [0.1155].
+        std (list, optional): Std deviation for normalization. Defaults to [0.2224].
+    Returns:
+        DataLoader: Test DataLoader.
+        """
     transform = transforms.Compose([
         transforms.Resize((IMAGE_DIM, IMAGE_DIM)),
         transforms.Grayscale(num_output_channels=1),

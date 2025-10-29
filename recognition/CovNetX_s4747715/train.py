@@ -17,6 +17,16 @@ data_location = r"FILE-PATH\ADNI data set for Alzheimer's disease-20251015T01100
 test_location = r"FILE-PATH\ADNI data set for Alzheimer's disease-20251015T011003Z-1-001\AD_NC\test"
 
 def evaluate_model(model, dataloader, criterion, device, threshold=0.6):
+    """Evaluate the model on the validation set.
+    Args:   
+        model (nn.Module): The neural network model to evaluate.
+        dataloader (DataLoader): DataLoader for the validation dataset.
+        criterion (nn.Module): Loss function.
+        device (torch.device): Device to run the evaluation on (CPU or GPU).
+        threshold (float): Threshold for converting logits to binary predictions.
+    Returns:
+        Tuple[float, float]: Average loss and accuracy on the validation set.
+    """
     # Set the model to evaluation mode
     model.eval()
     total_loss = 0
@@ -50,8 +60,23 @@ def evaluate_model(model, dataloader, criterion, device, threshold=0.6):
     return avg_loss, accuracy
 
 
-def train(model, num_epochs, learning_rate, criterion, optimizer, scheduler=scheduler, load = False):
-    
+def train(model, num_epochs, learning_rate, criterion, optimizer, 
+          scheduler, load = False):
+    """
+    Train the ConvNeXt model with early stopping based on validation loss.
+    Args:
+        model (nn.Module): The ConvNeXt model to train.
+        num_epochs (int): Number of epochs to train the model.
+        learning_rate (float): Learning rate for the optimizer.
+        criterion (nn.Module): Loss function.
+        optimizer (torch.optim.Optimizer): Optimizer for training.
+        scheduler (torch.optim.lr_scheduler, optional): Learning rate scheduler. 
+                    Defaults to None.
+        load (bool, optional): Whether to load existing model weights. 
+                    Defaults to False.
+    Returns:
+        nn.Module: The trained ConvNeXt model.
+    """
     best_val_loss = float('inf')
     best_epoch = 0
     early_stop_patience = 5
@@ -70,7 +95,8 @@ def train(model, num_epochs, learning_rate, criterion, optimizer, scheduler=sche
         for i, (images, labels) in enumerate(dl_aug):
             # Move data to the appropriate device (e.g., GPU)
             images, labels = images.to(device), labels.to(device)
-            labels = labels.unsqueeze(1).float() # Unsqueeze labels to match model output shape and cast to float
+            # Unsqueeze labels to match model output shape and cast to float
+            labels = labels.unsqueeze(1).float() 
             # Forward pass
             outputs = model(images)
             loss = criterion(outputs, labels)
@@ -91,7 +117,7 @@ def train(model, num_epochs, learning_rate, criterion, optimizer, scheduler=sche
         validation_loss_values.append(val_loss)
         validation_acc_values.append(val_acc)
         print(f'Epoch [{epoch+1}/{num_epochs}]')
-        print(f'  -> Validation Loss: {val_loss:.4f}, Validation Accuracy: {val_acc:.4f}')
+        print(f'  -> Val Loss: {val_loss:.4f}, Val Accuracy: {val_acc:.4f}')
 
         # Check if this is the best model so far based on Validation Loss
         if val_loss < best_val_loss:
@@ -104,7 +130,8 @@ def train(model, num_epochs, learning_rate, criterion, optimizer, scheduler=sche
         
         else:
             patience_counter += 1
-            # If the model performance hasn't improved for 'patience_counter' epochs, stop training.
+            # If the model performance hasn't improved for 'patience_counter' 
+            # epochs, stop training.
             if patience_counter >= early_stop_patience:
                 print(f"\n Early stopping triggered after {epoch+1} epochs.")
                 break
@@ -113,7 +140,8 @@ def train(model, num_epochs, learning_rate, criterion, optimizer, scheduler=sche
             break
     end = time.time()
     elapsed = end - start
-    print("Training took " + str(elapsed) + " secs or " + str(elapsed/60) + " mins in total")
+    print("Training took " + str(elapsed) + " secs or " 
+            + str(elapsed/60) + " mins in total")
 
     print("\n> Training Finished.")
 
@@ -180,10 +208,7 @@ if __name__ == "__main__":
 
     # set criterion to CrossEntropyLoss for multi-class classification
     criterion = nn.BCEWithLogitsLoss().to(device)
-    # optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=5e-4)
-    # criterion = nn.CrossEntropyLoss(label_smoothing=0.1).to(device)
     optimizer = torch.optim.AdamW(model.parameters(), lr=learning_rate, weight_decay=5e-3)
-    # optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate, momentum=0.9, weight_decay=5e-4)
     
     #Piecewise Linear Schedule
     total_step = len(dl_aug)
