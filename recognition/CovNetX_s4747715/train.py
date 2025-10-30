@@ -209,7 +209,7 @@ if __name__ == "__main__":
     model = model.to(device)
 
     learning_rate = 1e-5
-    max_lr = 1e-3 # 0.01
+    max_lr = 1e-3 
     num_epochs = 60
 
     # set criterion to CrossEntropyLoss for multi-class classification
