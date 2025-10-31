@@ -13,12 +13,20 @@ In the 2020s, CovNeXt was developed as a classification model inspired by Vision
 
 ![Comparison of Covnet Block to others](images/Covnet.png)
 
-Swin and ConvNeXt both use Gelu as the activation function instead of ReLu used by ResNet. Additionally, Resnet uses batch normalisation, where as the other two utilise layer normalisation, which improves stability. 
+Swin and ConvNeXt both use inverted bottleneck blocks and Gelu as the activation function instead of non-inverted blocks and ReLu used by ResNet. Additionally, Resnet uses batch normalisation, whereas the other two utilise layer normalisation, which improves stability.
+
+
+The figure below shows an example of a whole ConvNeXt. Key aspects about ConvNeXt include:
+- Patchify stem: using 4x4 convolution with a stride of 4 instead of the standard 7x7 convolution. Similar to patch embedding in ViTs.
+- Stagewise architecture: There are 4 stages of applying several convNeXt blocks in sequence and then downsampling. Processively lowering resolution while processing feature maps.
+- Inverted bottleneck blocks: expansion before depthwise convolution
+
+<img width="1271" height="641" alt="image" src="https://github.com/user-attachments/assets/6137220d-a2d8-434d-b3ec-226857ebea3b" />
+The main differences between the above block and the implementation in this project are that there was only 1 channel in as the images are gray scale whereas usually ConvNeXt is set up for the 3 channels (RGB). Additionally, Various data regularisations was added with the aim of improving the generalization of the model. This included additional dropouts and stochastic_depth within the ConVneXt block. 
+
+The architecture used for the inner ConvNeXt block is shown in the image below. It includes an inverted bottleneck design similar to what is used in Swin, where large-kernel depthwise conv2D is performed first, followed by layer normalisation and then the activation function GELU. At the end drop path is applied for regularisation and then the final output is added back to the original input via a skip connection, which is a concept used in ResNet. The most important parts of this aritecture are the inverted bottleneck blocks, GELU, dropout and skip connection.
 
 ![GeeksForGeeks [3]](images/image.png)
-It uses 4 iterations of convNeXt blocks with varying depths and widths
-
-Using activation function GELU instead of ReLU
 
 
 ### Data loading and preprocessing
@@ -41,14 +49,17 @@ transform = transforms.Compose([
         transforms.RandomErasing(p=0.8, scale=(0.02, 0.2), ratio=(0.3, 3.3)),
     ])
 ```
+
+An example of the data after processing is shown below:
+
 ![Example training data after augmentation](images/Dataset_Processed.png)
 
 The mean and std were calculated across the entire train dataset, and an average was used for preprocessing.
 
-The criterion used was BCEWithLogicLoss because ...
-The chosen optimiser used as AdamW because ...
+The criterion used was BCEWithLogicLoss because it is a good loss function for binary classification tasks where the model outputs a single logit. It is a combination of sigmoid and Binary Cross-Entropy, which helps prevent instability.  
+The chosen optimiser used as AdamW because of it's effective weight decay and L2 regularisation, which aims to improve generalisation performance and better convergence.  
 
-Learning rate scheduling was also added to help the training. The scheduler used was the one-cycle LR scheduler as seen in the figure below:
+Learning rate scheduling was also added to help achieve faster and more stable convergence while avoiding overshooting or stagnating at local minima. The scheduler used was the one-cycle LR scheduler and the behaviour of the scheuler is seen in the figure below:
 
 Scheduler Learning rate
 ![alt text](images/LearningRate.png)
@@ -59,27 +70,27 @@ Scheduler Learning rate
 The train dataset provided was relatively balanced between the AD and NC classes. The AD class made up 48.327% of the dataset and the NC class made up the other 51.673%. The validation set came out from the train dataset and the split was
 80/20. The test set provided was therefore left completely untouched until the model was fully trained and testing was performed.
 
-Class distribution in dl_aug (Training DataLoader):
-Class AD (0): 8311
-Class NC (1): 8905
+Class distribution in Training DataLoader:
+> Class AD (0): 8311
+> Class NC (1): 8905
 
-Class distribution in val_dl_aug (Validation DataLoader):
-Class NC (1): 2215
-Class AD (0): 2089
+Class distribution in Validation DataLoader):
+> Class NC (1): 2215
+> Class AD (0): 2089
 
-### Data Regularisation 
-Various data regularisations was added with the aim of improving the generalization of the model. This included dropouts and stochastic_depth within the ConVneXt block. 
 
 ## Final Results
-The best test accuracy was 79.155%. 
-Confusion Matrix
+A total of 60 epochs were run with tuned parameters with the structure and processing discussed. The best test accuracy achieved was 79.155%. 
+
+This performance is shown in the Confusion Matrix below
+
 ![alt text](images/ConfusionMatrix.png)
 
 Where 0 is the NC class and 1 is the AD class. 
 
-From the confusion matrix it is clear there is a bais towards false positives than there is to false negatives. This is desirable in most medical field imaging problems as it is more severe to have a false negative result as then
-patients will not be treated whereas a false positive result can be further checked and confirmed.
+From the confusion matrix it is clear there is a bais towards positives as there are more false positives than there are false negatives. Although this means performance is lower, this is more desirable than a lean towards false negatives. In most medical field imaging problems, it is far more severe to have a false negative result as then issues are no diagnosed and patients will not be treated, whereas a false positive result can be further checked and confirmed. Therefore, this balance is acceptable in the context of this task.
 
+The validation during training shown below indicates that the model has overfit towards the training and validation data, as there is such a large gap between validation accuracy and test accuracy. Even with extensive data regulation, additional data augmentation this gap could not be minimised.
 
 Validation Accuracy vs epochs
 ![alt text](images/ValAcc.png)
@@ -87,23 +98,23 @@ Validation Accuracy vs epochs
 validation loss vs epochs 
 ![alt text](images/ValLoss.png)
 
-The validation during training indicates that the model is overfitting towards The training and validation data, as there is such a large gap between validation accuracy and test accuracy. Even with extensive data regulation, additional data
-augmentation and parameter checking, the overfitting nature remains and therefore could be caused by some data leakage or inconsistency between the train and  test dataset.
 
-To maximise the output of a given model, a threshold was performed to examine the optimal value.
+To maximise the output of a given model, a threshold was applied to examine the optimal value.
 
 Thresholding
+
 ![alt text](images/Threshold.png)
 
-For this case, the optimal thresholding value was 0.86. This indicates there is some lean or bias towards the class 1 (AD), which was confirmed in the confusion matrix.
+For this case, the optimal thresholding value was 0.86. This indicates there is some lean or bias towards the class 1 (AD), which was confirmed in the confusion matrix. With the optimal thresholding, the max test accuracy was achieved.
 
 ## Evaluation
-The model's best performance wsa 79.155% test accuracy which falls just shy of the 80% target margin, this performance is highly promising and demonstrates the model is likely to be able to meet these requirements, given the right parameters. 
+The model's best performance was 79.155% test accuracy which falls just shy of the 80% target margin, this performance is highly promising and demonstrates the model is likely to be able to meet these requirements, given the right parameters. 
 
-Some extensions that could be recommended is using a different learning rate scheduler such as the decaying cosine scheduler used in the published CovNeXt report. 
+Some extensions that could be recommended are using a different learning rate scheduler such as the decaying cosine scheduler used in the published CovNeXt report. 
 
-Additionally, the preprocessing and training validation split did not consider that each patient had 20 scans, and therefore, that may have caused some data leakage leading to very high performance in testing leading the gap between validation accuracy and test accuracy. 
+Additionally, the preprocessing and training validation split did not consider that each patient had 20 scans, and therefore, there may have been some data leakage between train and validation datasets, leading to very high performance in validation. This could explain the gap between validation accuracy and test accuracy. 
 
+The original publication also mentioned the use of Mixup and CutMix during augmentation after the batches were created. Adding this may also improve the models overfitting issue.
 
 ## Usage
 ### Training
