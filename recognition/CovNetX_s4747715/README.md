@@ -155,12 +155,19 @@ from typing import List
 ```
 
 #### Versions used
+
 - torch >= 2.8.0+cu126
 - torchvision >= 0.23.0+cu126
 - matplotlib >= 3.10.0
 - numpy >= 2.0.2
 - seaborn >= 0.13.2
 - sklearn >= 1.6.1
+
+Install through terminal
+```
+pip install torch==2.8.0 torchvision==0.23.0 --index-url https://download.pytorch.org/whl/cu126
+pip install matplotlib==3.10.0 numpy==2.0.2 seaborn==0.13.2 scikit-learn==1.6.1
+```
 
 
 ## References
